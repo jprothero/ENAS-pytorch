@@ -1,0 +1,58 @@
+ #could I do alphazero with a sigmoid?
+                #basically I'd look ahead to a future state, estimate the value, 
+                #and send it back. I would need to modify the UCT to somehow select
+                #different values of the sigmoid though
+                #probably we could break it into some set of chunks, e.g. 10
+                #and then treat those like the probabilities
+                #for example if we go to .6 50% of the time and others randomly
+                #.6 should get encouraged, so for example the number of visits to 
+                #.4-.6 and .6-.8 would get more weight somehow
+                #so if we have 2 for and 3 respectively, we want most of the weight to
+                #go to that section of the sigmoid. so maybe we normalize the chucks to
+                #get a probability distribution, and then scale the chucks by the probability and 
+                #add them>?
+                #so like 0-.5 and .5 to 1 are two chucks, and we do 3 visits
+                #if we do 3 visits to 0-.5 we want a value of 2.5
+                #1*(.5-0) + 2*(1-.5) = .25 + 1 = 1.25/num_visits = 3
+
+                #so 3(.5 - 0) = .25
+
+                # Code for using alpha zero with a chunked sigmoid
+                # We could probably pretty easily modify it to a tanh by squeezing it
+                
+                # import numpy as np
+
+                # chunks = [(0, .5), (.5, 1)]
+                # visits = [0, 0]
+
+                # for _ in range(total_visits):
+                #     visits[np.random.choice(len(chunks))] += 1
+
+                # final_probas = (visits[0]*np.mean(chunks[0]) + \
+                #   visits[1]*np.mean(chunks[1]))/total_visits
+
+                # So the idea is we need a function that looks at the current state
+                #of the whole network, and produces a value for what that state is
+                #ENAS is autoregressive so in theory the LSTM can remember what has happened
+                #which would make it so we dont necessarily need to look at the whole state
+                #this would restrict to either saving the sequences to recreate them (inefficient)
+                #or doing training in the middle of these loops (correlated)
+                #the latter may be the best easy to implement option
+                #it also makes sense because then we can use the improve search
+                #probabilities to make decisions, which is what we want
+                #we question is how would we train the controller network
+                #we could add an alternate input to the autoregressive which is a memory
+                #vector containing the architecture to this point, or an embedding of it
+                #so over the course of a training sequence we build up a memory vector
+                #based on the choices made, and then we save it later to be trained
+                #either way, at every decision point we want to put the alpha zero algorithm
+                #to use. in effect, we want to take the value of a current state,
+                #the networks raw probabilities, and the state itself
+                #we could possible write a function in here that does it,
+                #i.e. we write a save point then return to it after we do our imagined
+                #planning. 
+                #So we reach a branch, i.e. a decision point
+                #we do some number of imagined trajectories, by continuing as normal,
+                #then periodically backing up, (possibly with a goto?)
+                #and then at the end restoring the variables to their previous values
+                #and continuing as normal with the improved probabilities

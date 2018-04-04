@@ -1,48 +1,33 @@
-"""Entry point."""
-import os
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+import FLAGS
+from lib.train import train
+from lib.test import test
+from lib.controller import Controller
+from lib.child import make_child
 
-import torch
+def main():
+    controller = Controller()
 
-import data
-import config
-import utils
-import trainer
+    kwargs = {"num_workers": 1, "pin_memory": True} if FLAGS.CUDA else {}
+    train_loader = DataLoader(datasets.Omniglot(
+        "data", train=True, download=True,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            # transforms.Normalize(mean, std) should add for better performance, + other transforms
+        ])), batch_sizer=FLAGS.BATCH_SIZE, shuffle=True, **kwargs)
 
-logger = utils.get_logger()
+    test_loader = DataLoader(datasets.Omniglot(
+        "data", train=False,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            # transforms.Normalize(mean, std) should add for better performance, + other transforms
+        ])), batch_sizer=FLAGS.BATCH_SIZE, shuffle=True, **kwargs)
 
-
-def main(args):  # pylint:disable=redefined-outer-name
-    """main: Entry point."""
-    utils.prepare_dirs(args)
-
-    torch.manual_seed(args.random_seed)
-
-    if args.num_gpu > 0:
-        torch.cuda.manual_seed(args.random_seed)
-
-    if args.network_type == 'rnn':
-        dataset = data.text.Corpus(args.data_path)
-    elif args.dataset == 'cifar':
-        dataset = data.image.Image(args.data_path)
+    if FLAGS.TRAIN:
+        train(controller, train_loader)
     else:
-        raise NotImplementedError(f"{args.dataset} is not supported")
-
-    trnr = trainer.Trainer(args, dataset)
-
-    if args.mode == 'train':
-        utils.save_args(args)
-        trnr.train()
-    elif args.mode == 'derive':
-        assert args.load_path != "", ("`--load_path` should be given in "
-                                      "`derive` mode")
-        trnr.derive()
-    else:
-        if not args.load_path:
-            raise Exception("[!] You should specify `load_path` to load a "
-                            "pretrained model")
-        trnr.test()
-
+        test(controller, test_loader)
 
 if __name__ == "__main__":
-    args, unparsed = config.get_args()
-    main(args)
+    main()
